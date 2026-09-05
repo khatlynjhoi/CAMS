@@ -58,31 +58,56 @@ class QuestionController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'program' => 'nullable|string|max:255',
-            'term' => 'nullable|string|max:255',
-            'course_id' => 'nullable|exists:courses,id',
-            'course_outcome_id' => 'nullable|string|max:255',
-            'learning_outcome_id' => 'nullable|string|max:255',
-            'code' => 'required|string|max:255|unique:questions,code',
-            'type' => 'required|string|max:255',
-            'text' => 'required|string',
-            'image_url' => 'nullable|string',
-            'options' => 'nullable|array',
-            'correct_answer' => 'nullable|string',
-            'matching_pairs' => 'nullable|array',
-            'stcw_standard' => 'nullable|string|max:255',
-            'bloom_level' => 'nullable|string|max:255',
-            'status' => 'nullable|string|max:255',
-            'ai_accepted' => 'nullable|boolean',
-            'retained_ai' => 'nullable|boolean',
-        ]);
+{
+    $validated = $request->validate([
+        'program' => 'nullable|string|max:255',
+        'term' => 'nullable|string|max:255',
+        'course_id' => 'nullable|exists:courses,id',
+        'course_outcome_id' => 'nullable|string|max:255',
+        'learning_outcome_id' => 'nullable|string|max:255',
+        'code' => 'required|string|max:255|unique:questions,code',
+        'type' => 'required|string|max:255',
+        'text' => 'required|string',
+        'image_url' => 'nullable|string',
+        'options' => 'nullable|array',
+        'correct_answer' => 'nullable|string',
+        'matching_pairs' => 'nullable|array',
+        'stcw_standard' => 'nullable|string|max:255',
+        'bloom_level' => 'nullable|string|max:255',
+        'status' => 'nullable|string|max:255',
+        'ai_accepted' => 'nullable|boolean',
+        'retained_ai' => 'nullable|boolean',
+    ]);
 
-        $question = Question::create($validated);
+    $normalizedText = preg_replace(
+        '/\s+/',
+        ' ',
+        trim($validated['text'])
+    );
 
-        return response()->json($question, 201);
+    $duplicate = Question::whereRaw(
+        'LOWER(TRIM(REGEXP_REPLACE(text, "[[:space:]]+", " "))) = ?',
+        [strtolower($normalizedText)]
+    )->first();
+
+    if ($duplicate) {
+        return response()->json([
+            'message' => 'Duplicate question detected.',
+            'duplicate' => true,
+            'existing_question' => [
+                'id' => $duplicate->id,
+                'code' => $duplicate->code,
+                'text' => $duplicate->text,
+            ],
+        ], 422);
     }
+
+    $validated['text'] = $normalizedText;
+
+    $question = Question::create($validated);
+
+    return response()->json($question, 201);
+}
 
     public function show(Question $question)
     {
