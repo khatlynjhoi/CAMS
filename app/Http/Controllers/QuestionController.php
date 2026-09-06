@@ -9,63 +9,11 @@ class QuestionController extends Controller
 {
     public function index(Request $request)
     {
-        // Eager load relationships so CO and LO codes/names are included in JSON output
-        $query = Question::with([
-            'course',
-            'courseOutcome',
-            'learningOutcome'
-        ]);
+        $query = Question::with(['course']);
 
-        if ($request->filled('program')) {
-            $query->where('program', $request->program);
-        }
-
-        if ($request->filled('term')) {
-            $query->where('term', $request->term);
-        }
-
-        // Handle filtering by course ID or course Code passed from Test Builder
-        if ($request->filled('course')) {
-            $courseVal = $request->course;
-            $query->where(function ($q) use ($courseVal) {
-                $q->where('course_id', $courseVal)
-                  ->orWhereHas('course', function ($cq) use ($courseVal) {
-                      $cq->where('code', $courseVal);
-                  });
-            });
-        }
-
-        if ($request->filled('course_id')) {
-            $query->where('course_id', $request->course_id);
-        }
-
-        if ($request->filled('course_outcome_id')) {
-            $query->where('course_outcome_id', $request->course_outcome_id);
-        }
-
-        if ($request->filled('learning_outcome_id')) {
-            $query->where('learning_outcome_id', $request->learning_outcome_id);
-        }
-
-        if ($request->filled('bloom_level')) {
-            $query->where('bloom_level', $request->bloom_level);
-        }
-
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
+        // Only filter by status (case-insensitive) if passed by the request
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-
-            $query->where(function ($q) use ($search) {
-                $q->where('text', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
-            });
+            $query->whereRaw('LOWER(status) = ?', [strtolower($request->status)]);
         }
 
         return response()->json(
@@ -84,7 +32,8 @@ class QuestionController extends Controller
             'code' => 'required|string|max:255|unique:questions,code',
             'type' => 'required|string|max:255',
             'text' => 'required|string',
-            'image_url' => 'nullable|string',
+            'image' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120',
+            'image_url' => 'nullable',
             'options' => 'nullable|array',
             'correct_answer' => 'nullable|string',
             'matching_pairs' => 'nullable|array',
@@ -94,6 +43,17 @@ class QuestionController extends Controller
             'ai_accepted' => 'nullable|boolean',
             'retained_ai' => 'nullable|boolean',
         ]);
+
+        // Process File Upload if sent as binary
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('questions', 'public');
+            $validated['image_url'] = '/storage/' . $path;
+        } elseif ($request->hasFile('image_url')) {
+            $path = $request->file('image_url')->store('questions', 'public');
+            $validated['image_url'] = '/storage/' . $path;
+        }
+
+        unset($validated['image']);
 
         $normalizedText = preg_replace(
             '/\s+/',
@@ -122,15 +82,15 @@ class QuestionController extends Controller
 
         $question = Question::create($validated);
         
-        // Load relationships before responding
-        $question->load(['course', 'courseOutcome', 'learningOutcome']);
+        // Load only the valid course relationship
+        $question->load(['course']);
 
         return response()->json($question, 201);
     }
 
     public function show(Question $question)
     {
-        $question->load(['course', 'courseOutcome', 'learningOutcome']);
+        $question->load(['course']);
         
         return response()->json($question);
     }
@@ -146,7 +106,8 @@ class QuestionController extends Controller
             'code' => 'required|string|max:255|unique:questions,code,' . $question->id,
             'type' => 'required|string|max:255',
             'text' => 'required|string',
-            'image_url' => 'nullable|string',
+            'image' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,svg,webp|max:5120',
+            'image_url' => 'nullable',
             'options' => 'nullable|array',
             'correct_answer' => 'nullable|string',
             'matching_pairs' => 'nullable|array',
@@ -157,10 +118,28 @@ class QuestionController extends Controller
             'retained_ai' => 'nullable|boolean',
         ]);
 
+        // Process File Upload if sent as binary
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('questions', 'public');
+            $validated['image_url'] = '/storage/' . $path;
+        } elseif ($request->hasFile('image_url')) {
+            $path = $request->file('image_url')->store('questions', 'public');
+            $validated['image_url'] = '/storage/' . $path;
+        }
+
+        unset($validated['image']);
+
+        $normalizedText = preg_replace(
+            '/\s+/',
+            ' ',
+            trim($validated['text'])
+        );
+
+        $validated['text'] = $normalizedText;
+
         $question->update($validated);
         
-        // Refresh and load relationships
-        $question->load(['course', 'courseOutcome', 'learningOutcome']);
+        $question->load(['course']);
 
         return response()->json($question);
     }

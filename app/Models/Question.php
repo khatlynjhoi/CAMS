@@ -43,11 +43,13 @@ class Question extends Model
 
     public function courseOutcome()
     {
-        return $this->belongsTo(CourseOutcome::class, 'course_outcome_id');
+        // Links question.course_outcome_id ("CO1") to course_outcomes.code
+        return $this->belongsTo(CourseOutcome::class, 'course_outcome_id', 'code');
     }
 
     public function learningOutcome()
     {
-        return $this->belongsTo(LearningOutcome::class, 'learning_outcome_id');
+        // Links question.learning_outcome_id ("LO1.3") to learning_outcomes.code
+        return $this->belongsTo(LearningOutcome::class, 'learning_outcome_id', 'code');
     }
 }
