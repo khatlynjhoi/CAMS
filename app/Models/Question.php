@@ -38,6 +38,16 @@ class Question extends Model
 
     public function course()
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'course_id');
+    }
+
+    public function courseOutcome()
+    {
+        return $this->belongsTo(CourseOutcome::class, 'course_outcome_id');
+    }
+
+    public function learningOutcome()
+    {
+        return $this->belongsTo(LearningOutcome::class, 'learning_outcome_id');
     }
 }

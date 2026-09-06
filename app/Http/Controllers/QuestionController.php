@@ -9,7 +9,12 @@ class QuestionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Question::query();
+        // Eager load relationships so CO and LO codes/names are included in JSON output
+        $query = Question::with([
+            'course',
+            'courseOutcome',
+            'learningOutcome'
+        ]);
 
         if ($request->filled('program')) {
             $query->where('program', $request->program);
@@ -17,6 +22,17 @@ class QuestionController extends Controller
 
         if ($request->filled('term')) {
             $query->where('term', $request->term);
+        }
+
+        // Handle filtering by course ID or course Code passed from Test Builder
+        if ($request->filled('course')) {
+            $courseVal = $request->course;
+            $query->where(function ($q) use ($courseVal) {
+                $q->where('course_id', $courseVal)
+                  ->orWhereHas('course', function ($cq) use ($courseVal) {
+                      $cq->where('code', $courseVal);
+                  });
+            });
         }
 
         if ($request->filled('course_id')) {
@@ -58,59 +74,64 @@ class QuestionController extends Controller
     }
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'program' => 'nullable|string|max:255',
-        'term' => 'nullable|string|max:255',
-        'course_id' => 'nullable|exists:courses,id',
-        'course_outcome_id' => 'nullable|string|max:255',
-        'learning_outcome_id' => 'nullable|string|max:255',
-        'code' => 'required|string|max:255|unique:questions,code',
-        'type' => 'required|string|max:255',
-        'text' => 'required|string',
-        'image_url' => 'nullable|string',
-        'options' => 'nullable|array',
-        'correct_answer' => 'nullable|string',
-        'matching_pairs' => 'nullable|array',
-        'stcw_standard' => 'nullable|string|max:255',
-        'bloom_level' => 'nullable|string|max:255',
-        'status' => 'nullable|string|max:255',
-        'ai_accepted' => 'nullable|boolean',
-        'retained_ai' => 'nullable|boolean',
-    ]);
+    {
+        $validated = $request->validate([
+            'program' => 'nullable|string|max:255',
+            'term' => 'nullable|string|max:255',
+            'course_id' => 'nullable|exists:courses,id',
+            'course_outcome_id' => 'nullable|string|max:255',
+            'learning_outcome_id' => 'nullable|string|max:255',
+            'code' => 'required|string|max:255|unique:questions,code',
+            'type' => 'required|string|max:255',
+            'text' => 'required|string',
+            'image_url' => 'nullable|string',
+            'options' => 'nullable|array',
+            'correct_answer' => 'nullable|string',
+            'matching_pairs' => 'nullable|array',
+            'stcw_standard' => 'nullable|string|max:255',
+            'bloom_level' => 'nullable|string|max:255',
+            'status' => 'nullable|string|max:255',
+            'ai_accepted' => 'nullable|boolean',
+            'retained_ai' => 'nullable|boolean',
+        ]);
 
-    $normalizedText = preg_replace(
-        '/\s+/',
-        ' ',
-        trim($validated['text'])
-    );
+        $normalizedText = preg_replace(
+            '/\s+/',
+            ' ',
+            trim($validated['text'])
+        );
 
-    $duplicate = Question::whereRaw(
-        'LOWER(TRIM(REGEXP_REPLACE(text, "[[:space:]]+", " "))) = ?',
-        [strtolower($normalizedText)]
-    )->first();
+        $duplicate = Question::whereRaw(
+            'LOWER(TRIM(REGEXP_REPLACE(text, "[[:space:]]+", " "))) = ?',
+            [strtolower($normalizedText)]
+        )->first();
 
-    if ($duplicate) {
-        return response()->json([
-            'message' => 'Duplicate question detected.',
-            'duplicate' => true,
-            'existing_question' => [
-                'id' => $duplicate->id,
-                'code' => $duplicate->code,
-                'text' => $duplicate->text,
-            ],
-        ], 422);
+        if ($duplicate) {
+            return response()->json([
+                'message' => 'Duplicate question detected.',
+                'duplicate' => true,
+                'existing_question' => [
+                    'id' => $duplicate->id,
+                    'code' => $duplicate->code,
+                    'text' => $duplicate->text,
+                ],
+            ], 422);
+        }
+
+        $validated['text'] = $normalizedText;
+
+        $question = Question::create($validated);
+        
+        // Load relationships before responding
+        $question->load(['course', 'courseOutcome', 'learningOutcome']);
+
+        return response()->json($question, 201);
     }
-
-    $validated['text'] = $normalizedText;
-
-    $question = Question::create($validated);
-
-    return response()->json($question, 201);
-}
 
     public function show(Question $question)
     {
+        $question->load(['course', 'courseOutcome', 'learningOutcome']);
+        
         return response()->json($question);
     }
 
@@ -137,6 +158,9 @@ class QuestionController extends Controller
         ]);
 
         $question->update($validated);
+        
+        // Refresh and load relationships
+        $question->load(['course', 'courseOutcome', 'learningOutcome']);
 
         return response()->json($question);
     }
