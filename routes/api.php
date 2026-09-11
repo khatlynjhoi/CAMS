@@ -6,6 +6,8 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\ExamSubmissionController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\CourseOutcomeController;
+use App\Http\Controllers\LearningOutcomeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +33,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('courses', CourseController::class);
 
     Route::apiResource('questions', QuestionController::class);
+
+    Route::apiResource('course-outcomes', CourseOutcomeController::class);
+
+    Route::apiResource('learning-outcomes', LearningOutcomeController::class);
 
     Route::apiResource('exam-submissions', ExamSubmissionController::class)
         ->only(['index', 'store', 'show', 'destroy']);
