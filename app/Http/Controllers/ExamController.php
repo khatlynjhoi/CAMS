@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Question;
-use App\Models\SavedTest;
+use App\Models\ExamSubmission;
 use Illuminate\Http\Request;
 
 class ExamController extends Controller
@@ -19,8 +19,9 @@ class ExamController extends Controller
         ]);
 
         $limit = $validated['totalItems'] ?? 10;
-        $courseCode = $validated['courseId'];
+        $courseCode = trim($validated['courseId']);
 
+        // Query questions matched by course code or relationship
         $questions = Question::whereHas('course', function ($q) use ($courseCode) {
             $q->where('code', $courseCode);
         })
@@ -44,6 +45,7 @@ class ExamController extends Controller
                 'code' => $q->code,
                 'text' => $q->text,
                 'type' => $q->type ?? 'multiple_choice',
+                'image_url' => $q->image_url,
                 'options' => $q->options ?? [],
                 'correctAnswer' => $q->correct_answer,
                 'bloomLevel' => $q->bloom_level ?? 'Understanding',
@@ -58,12 +60,29 @@ class ExamController extends Controller
     }
 
     /**
-     * Fetches assembled test blueprints for Stage 1 (AD-09 / AD-10) reports
+     * Receives and persists cadet examination submissions for Stage 2 Institutional Reports
      */
-    public function getSavedTests()
+    public function submit(Request $request)
     {
-        $tests = SavedTest::with('course')->orderByDesc('created_at')->get();
+        $validated = $request->validate([
+            'cadet_id' => 'nullable|string|max:255',
+            'cadet_name' => 'required|string|max:255',
+            'course_code' => 'required|string|max:255',
+            'score' => 'required|numeric|min:0',
+            'total_items' => 'required|integer|min:0',
+            'duration_minutes' => 'nullable|integer|min:0',
+            'breakdown' => 'nullable|array',
+            'submitted_at' => 'nullable|date'
+        ]);
 
-        return response()->json($tests);
+        $validated['submitted_at'] = $validated['submitted_at'] ?? now();
+
+        $submission = ExamSubmission::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Exam submission recorded successfully.',
+            'data' => $submission
+        ], 201);
     }
 }
