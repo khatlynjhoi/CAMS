@@ -23,9 +23,10 @@ class AuditLogController extends Controller
             $query->where('target', 'like', '%' . $request->target . '%');
         }
 
-        return response()->json(
-            $query->orderByDesc('logged_at')->orderByDesc('id')->get()
-        );
+        return response()->json([
+            'success' => true,
+            'data' => $query->orderByDesc('logged_at')->orderByDesc('id')->get()
+        ]);
     }
 
     public function store(Request $request)
@@ -40,13 +41,17 @@ class AuditLogController extends Controller
 
         $log = AuditLog::create($validated);
 
-        return response()->json($log, 201);
+        return response()->json([
+            'success' => true,
+            'data' => $log
+        ], 201);
     }
 
     public function show(AuditLog $auditLog)
     {
-        return response()->json(
-            $auditLog->load('user')
-        );
+        return response()->json([
+            'success' => true,
+            'data' => $auditLog->load('user')
+        ]);
     }
 }

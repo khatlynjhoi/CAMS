@@ -9,7 +9,10 @@ class CourseController extends Controller
 {
     public function index()
     {
-        return response()->json(Course::orderBy('code')->get());
+        return response()->json([
+            'success' => true,
+            'data' => Course::orderBy('code')->get()
+        ]);
     }
 
     public function store(Request $request)
@@ -23,12 +26,19 @@ class CourseController extends Controller
 
         $course = Course::create($validated);
 
-        return response()->json($course, 201);
+        return response()->json([
+            'success' => true,
+            'message' => 'Course created successfully.',
+            'data' => $course
+        ], 201);
     }
 
     public function show(Course $course)
     {
-        return response()->json($course);
+        return response()->json([
+            'success' => true,
+            'data' => $course
+        ]);
     }
 
     public function update(Request $request, Course $course)
@@ -42,7 +52,11 @@ class CourseController extends Controller
 
         $course->update($validated);
 
-        return response()->json($course);
+        return response()->json([
+            'success' => true,
+            'message' => 'Course updated successfully.',
+            'data' => $course
+        ]);
     }
 
     public function destroy(Course $course)
@@ -50,6 +64,7 @@ class CourseController extends Controller
         $course->delete();
 
         return response()->json([
+            'success' => true,
             'message' => 'Course deleted successfully.'
         ]);
     }
