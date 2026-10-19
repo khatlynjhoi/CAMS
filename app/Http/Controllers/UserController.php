@@ -8,20 +8,39 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    private function getManageableRoles(string $actorRole): array
+    {
+        $normalized = strtolower(trim($actorRole));
+        if (in_array($normalized, ['admin', 'bma administrator'])) {
+            return ['Admin', 'Assessment Officer', 'Instructor', 'Cadet'];
+        }
+        if ($normalized === 'assessment officer') {
+            return ['Instructor', 'Cadet'];
+        }
+        if ($normalized === 'instructor') {
+            return ['Cadet'];
+        }
+        return [];
+    }
+
+    private function getActorRole(Request $request): string
+    {
+        return $request->user()?->role ?? $request->header('X-User-Role', 'Admin');
+    }
+
     public function index(Request $request)
     {
-        $query = User::query();
+        $actorRole = $this->getActorRole($request);
+        $manageableRoles = $this->getManageableRoles($actorRole);
+
+        if (empty($manageableRoles)) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $query = User::whereIn('role', $manageableRoles);
 
         if ($request->filled('role') && $request->role !== 'All') {
             $query->where('role', $request->role);
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
         }
 
         return response()->json([
@@ -32,11 +51,14 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $actorRole = $this->getActorRole($request);
+        $manageableRoles = $this->getManageableRoles($actorRole);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|string|in:Admin,Assessment Officer,Instructor,Cadet',
+            'role' => 'required|string|in:' . implode(',', $manageableRoles),
             'department' => 'nullable|string|max:255',
             'status' => 'nullable|string|in:Active,Inactive'
         ]);
@@ -46,19 +68,7 @@ class UserController extends Controller
 
         $user = User::create($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User account created successfully.',
-            'data' => $user
-        ], 201);
-    }
-
-    public function show(User $user)
-    {
-        return response()->json([
-            'success' => true,
-            'data' => $user
-        ]);
+        return response()->json(['success' => true, 'data' => $user], 201);
     }
 
     public function update(Request $request, User $user)
@@ -66,7 +76,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'sometimes|required|string|in:Admin,Assessment Officer,Instructor,Cadet',
+            'role' => 'nullable|string',
             'department' => 'nullable|string|max:255',
             'status' => 'nullable|string|in:Active,Inactive',
             'password' => 'nullable|string|min:6'
@@ -80,20 +90,12 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User account updated successfully.',
-            'data' => $user
-        ]);
+        return response()->json(['success' => true, 'data' => $user]);
     }
 
     public function destroy(User $user)
     {
         $user->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User account deleted successfully.'
-        ]);
+        return response()->json(['success' => true, 'message' => 'Account removed successfully.']);
     }
 }
