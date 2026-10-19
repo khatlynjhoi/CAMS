@@ -2,47 +2,51 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LearningOutcome;
 use Illuminate\Http\Request;
 
 class LearningOutcomeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $query = LearningOutcome::query();
+        if ($request->filled('course_outcome_id')) {
+            $query->where('course_outcome_id', $request->course_outcome_id);
+        }
+        return response()->json(['success' => true, 'data' => $query->get()]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'course_outcome_id' => 'required|exists:course_outcomes,id',
+            'code' => 'required|string|max:255',
+            'description' => 'required|string',
+        ]);
+
+        $outcome = LearningOutcome::create($validated);
+        return response()->json(['success' => true, 'data' => $outcome], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function show(LearningOutcome $learningOutcome)
     {
-        //
+        return response()->json(['success' => true, 'data' => $learningOutcome]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function update(Request $request, LearningOutcome $learningOutcome)
     {
-        //
+        $validated = $request->validate([
+            'code' => 'sometimes|required|string|max:255',
+            'description' => 'sometimes|required|string',
+        ]);
+
+        $learningOutcome->update($validated);
+        return response()->json(['success' => true, 'data' => $learningOutcome]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy(LearningOutcome $learningOutcome)
     {
-        //
+        $learningOutcome->delete();
+        return response()->json(['success' => true, 'message' => 'Learning outcome deleted.']);
     }
 }
