@@ -43,9 +43,21 @@ class UserController extends Controller
             $query->where('role', $request->role);
         }
 
+        // Map and enforce default fallbacks for department and status
+        $users = $query->orderBy('name')->get()->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'role' => $u->role ?? 'Admin',
+                'department' => !empty($u->department) ? $u->department : 'ICT',
+                'status' => !empty($u->status) ? $u->status : 'Active',
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('name')->get()
+            'data' => $users
         ]);
     }
 
@@ -64,11 +76,22 @@ class UserController extends Controller
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
+        $validated['department'] = $validated['department'] ?? 'ICT';
         $validated['status'] = $validated['status'] ?? 'Active';
 
         $user = User::create($validated);
 
-        return response()->json(['success' => true, 'data' => $user], 201);
+        return response()->json([
+            'success' => true, 
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'department' => $user->department ?? 'ICT',
+                'status' => $user->status ?? 'Active',
+            ]
+        ], 201);
     }
 
     public function update(Request $request, User $user)
@@ -90,7 +113,17 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return response()->json(['success' => true, 'data' => $user]);
+        return response()->json([
+            'success' => true, 
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'department' => $user->department ?? 'ICT',
+                'status' => $user->status ?? 'Active',
+            ]
+        ]);
     }
 
     public function destroy(User $user)
