@@ -13,14 +13,15 @@ class ExamSubmission extends Model
         'cadet_id',
         'cadet_name',
         'course_id',
+        'course_code',
         'score',
         'total_items',
+        'duration_minutes',
         'breakdown',
         'submitted_at',
     ];
 
     protected $casts = [
-        'score' => 'decimal:2',
         'breakdown' => 'array',
         'submitted_at' => 'datetime',
     ];

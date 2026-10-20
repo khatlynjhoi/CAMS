@@ -13,8 +13,10 @@ return new class extends Migration
             $table->string('cadet_id')->nullable();
             $table->string('cadet_name');
             $table->foreignId('course_id')->nullable()->constrained('courses')->nullOnDelete();
+            $table->string('course_code')->nullable();
             $table->decimal('score', 8, 2)->default(0);
             $table->unsignedInteger('total_items')->default(0);
+            $table->unsignedInteger('duration_minutes')->nullable();
             $table->json('breakdown')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
