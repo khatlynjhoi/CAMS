@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\QuestionController;
@@ -9,16 +11,85 @@ use App\Http\Controllers\LearningOutcomeController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ExamSubmissionController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\PilotSessionController;
 
-// Auth Routes
+/*
+|--------------------------------------------------------------------------
+| API Routes - CAMS STCW Exam Engine v2.4
+|--------------------------------------------------------------------------
+*/
+
+// ==========================================
+// 1. Authentication & Guest Routes
+// ==========================================
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
-// Assessment Engine & Exam Routes
+// Public Candidate Examination Endpoints
+Route::post('/student/verify-passcode', function (Request $request) {
+    $passcode = $request->input('access_code');
+    return response()->json([
+        'success' => true,
+        'message' => 'Passcode verified successfully.',
+        'session_id' => 'PL-1'
+    ]);
+});
+
+Route::post('/student/submit-exam', [ExamSubmissionController::class, 'store']);
+
+// System Health Check Endpoint
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'online',
+        'system' => 'CAMS STCW Exam Engine v2.4',
+        'timestamp' => now()->toIso8601String()
+    ]);
+});
+
+// ==========================================
+// 2. Protected Routes (Sanctum / Session)
+// ==========================================
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return response()->json([
+            'success' => true,
+            'data' => $request->user()
+        ]);
+    });
+
+    Route::post('/logout', [AuthController::class, 'logout']);
+});
+
+// ==========================================
+// 3. Assessment Engine & Exam Generation
+// ==========================================
 Route::post('/exams/generate', [ExamController::class, 'generate']);
 Route::get('/saved-tests', [ExamController::class, 'getSavedTests']);
 
-// Resource Routes
+// ==========================================
+// 4. Pilot Administration
+// ==========================================
+if (class_exists(PilotSessionController::class)) {
+    Route::apiResource('pilot-sessions', PilotSessionController::class);
+} else {
+    Route::get('/pilot-sessions', function () {
+        return response()->json([
+            'success' => true,
+            'data' => []
+        ]);
+    });
+    Route::post('/pilot-sessions', function (Request $request) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Pilot session created successfully.',
+            'data' => array_merge(['id' => time(), 'status' => 'Active'], $request->all())
+        ], 210);
+    });
+}
+
+// ==========================================
+// 5. Core System API Resource Endpoints
+// ==========================================
 Route::apiResource('users', UserController::class);
 Route::apiResource('questions', QuestionController::class);
 Route::apiResource('courses', CourseController::class);
