@@ -25,6 +25,8 @@ return new class extends Migration
             $table->string('stcw_standard')->nullable();
             $table->string('bloom_level')->nullable();
             $table->string('status')->default('Draft');
+            $table->boolean('ai_accepted')->default(false);
+            $table->boolean('retained_ai')->default(false);
             $table->timestamps();
         });
     }

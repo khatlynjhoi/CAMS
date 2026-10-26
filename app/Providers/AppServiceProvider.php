@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Prevent key length errors during database migrations
+        // Prevent key length errors during database migrations on utf8mb4 MySQL/MariaDB
         Schema::defaultStringLength(191);
 
         // Force HTTPS URL generation in production environments
