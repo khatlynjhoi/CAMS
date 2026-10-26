@@ -15,24 +15,18 @@ class CourseController extends Controller
     {
         $query = Course::query();
 
-        // Search filter by course code, title, or program
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhere('program', 'like', "%{$search}%");
-            });
+            $query->search($request->search);
         }
 
-        if ($request->filled('program')) {
-            $query->where('program', $request->program);
+        if ($request->filled('program') && $request->program !== 'All') {
+            $query->byProgram($request->program);
         }
 
         $query->orderBy('code');
 
-        // Fetch all records for dropdowns when requested (e.g., ?all=1)
-        if ($request->boolean('all')) {
+        // Fetch all records if 'all' flag is requested or by default for full lists
+        if ($request->boolean('all', true)) {
             return response()->json([
                 'success' => true,
                 'data' => $query->get()
@@ -55,7 +49,7 @@ class CourseController extends Controller
     }
 
     /**
-     * Store a newly created course in storage.
+     * Store a newly created course in MySQL.
      */
     public function store(Request $request): JsonResponse
     {
@@ -68,18 +62,19 @@ class CourseController extends Controller
 
         $validated['code'] = strtoupper(trim($validated['code']));
         $validated['title'] = trim($validated['title']);
+        $validated['program'] = $validated['program'] ?? 'BSMT';
 
         $course = Course::create($validated);
 
         return response()->json([
             'success' => true,
-            'message' => 'Course created successfully.',
+            'message' => 'Course created successfully in MySQL.',
             'data' => $course
         ], 201);
     }
 
     /**
-     * Display the specified course.
+     * Display details for a specific course.
      */
     public function show(Course $course): JsonResponse
     {
@@ -90,7 +85,7 @@ class CourseController extends Controller
     }
 
     /**
-     * Update the specified course in storage.
+     * Update specified course details in MySQL.
      */
     public function update(Request $request, Course $course): JsonResponse
     {
@@ -108,17 +103,16 @@ class CourseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Course updated successfully.',
+            'message' => 'Course updated successfully in MySQL.',
             'data' => $course
         ]);
     }
 
     /**
-     * Remove the specified course from storage with relational integrity checks.
+     * Remove the specified course from MySQL with relational checks.
      */
     public function destroy(Course $course): JsonResponse
     {
-        // Guard against deleting courses linked to existing questions
         if (method_exists($course, 'questions') && $course->questions()->exists()) {
             return response()->json([
                 'success' => false,
@@ -130,7 +124,7 @@ class CourseController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Course deleted successfully.'
+            'message' => 'Course deleted successfully from MySQL.'
         ]);
     }
 }

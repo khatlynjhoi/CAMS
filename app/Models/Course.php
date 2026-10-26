@@ -41,27 +41,11 @@ class Course extends Model
     }
 
     /**
-     * Get the course outcomes associated with this course.
-     */
-    public function courseOutcomes(): HasMany
-    {
-        return $this->hasMany(CourseOutcome::class);
-    }
-
-    /**
      * Get all questions tied to this course in the Question Bank.
      */
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class);
-    }
-
-    /**
-     * Get all saved test blueprints generated for this course.
-     */
-    public function savedTests(): HasMany
-    {
-        return $this->hasMany(SavedTest::class);
     }
 
     /**
@@ -75,10 +59,10 @@ class Course extends Model
     /**
      * Scope query to search by course code, title, or program.
      */
-    public function scopeSearch(Builder $query, string $term): Builder
+    public function scopeSearch(Builder $query, string$term): Builder
     {
         return $query->where(function ($q) use ($term) {
-            $q->where('code', 'like', "%{$term}%")
+            $q->where('code', 'like', "\%{$term}%")
               ->orWhere('title', 'like', "%{$term}%")
               ->orWhere('program', 'like', "%{$term}%");
         });
@@ -87,8 +71,8 @@ class Course extends Model
     /**
      * Scope query to filter by program.
      */
-    public function scopeByProgram(Builder $query, string $program): Builder
+    public function scopeByProgram(Builder $query, string$program): Builder
     {
-        return $query->where('program', $program);
+        return $query->where('program',$program);
     }
 }
