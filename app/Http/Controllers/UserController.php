@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -67,7 +68,6 @@ class UserController extends Controller
 
         $query->orderBy('name');
 
-        // Unpaginated response mode for management views (default: true)
         if ($request->boolean('all', true)) {
             $users = $query->get()->map(fn ($u) => $this->formatUserPayload($u));
             return response()->json([
@@ -92,7 +92,7 @@ class UserController extends Controller
     }
 
     /**
-     * Store a newly created user account.
+     * Store a newly created user account with password complexity enforcement.
      */
     public function store(Request $request): JsonResponse
     {
@@ -106,7 +106,10 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'password' => 'required|string|min:6',
+            'password' => [
+                'required',
+                Password::min(8)->mixedCase()->numbers()->symbols()
+            ],
             'role' => 'required|string|in:' . implode(',', $manageableRoles),
             'department' => 'nullable|string|max:255',
             'status' => 'nullable|string|in:Active,Inactive'
@@ -115,6 +118,7 @@ class UserController extends Controller
         $validated['name'] = trim($validated['name']);
         $validated['email'] = strtolower(trim($validated['email']));
         $validated['password'] = Hash::make($validated['password']);
+        $validated['password_changed_at'] = now();
         $validated['department'] = $validated['department'] ?? 'ICT';
         $validated['status'] = $validated['status'] ?? 'Active';
 
@@ -146,7 +150,7 @@ class UserController extends Controller
     }
 
     /**
-     * Update specified user account details.
+     * Update specified user account details and password policy.
      */
     public function update(Request $request, User $user): JsonResponse
     {
@@ -163,7 +167,10 @@ class UserController extends Controller
             'role' => 'nullable|string|in:' . implode(',', $manageableRoles),
             'department' => 'nullable|string|max:255',
             'status' => 'nullable|string|in:Active,Inactive',
-            'password' => 'nullable|string|min:6'
+            'password' => [
+                'nullable',
+                Password::min(8)->mixedCase()->numbers()->symbols()
+            ]
         ]);
 
         if (isset($validated['name'])) {
@@ -175,6 +182,7 @@ class UserController extends Controller
 
         if (!empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
+            $validated['password_changed_at'] = now();
         } else {
             unset($validated['password']);
         }
@@ -200,7 +208,6 @@ class UserController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized to delete this user.'], 403);
         }
 
-        // Prevent self-deletion
         if ($request->user() && $request->user()->id === $user->id) {
             return response()->json(['success' => false, 'message' => 'Cannot delete your own active account.'], 422);
         }

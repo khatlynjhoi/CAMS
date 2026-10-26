@@ -27,7 +27,7 @@ Route::post('/register', [AuthController::class, 'register']);
 
 // Public Candidate Examination Endpoints
 Route::post('/student/verify-passcode', function (Request $request) {
-    $passcode = $request->input('access_code');
+    $passcode =$request->input('access_code');
     return response()->json([
         'success' => true,
         'message' => 'Passcode verified successfully.',
@@ -47,17 +47,15 @@ Route::get('/health', function () {
 });
 
 // ==========================================
-// 2. Protected Routes (Sanctum / Session)
+// 2. Protected Routes (Sanctum Authenticated)
 // ==========================================
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user', function (Request $request) {
-        return response()->json([
-            'success' => true,
-            'data' => $request->user()
-        ]);
-    });
-
+    Route::get('/user', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
+
+    // Protected User Management Operations
+    Route::apiResource('users', UserController::class);
 });
 
 // ==========================================
@@ -90,7 +88,6 @@ if (class_exists(PilotSessionController::class)) {
 // ==========================================
 // 5. Core System API Resource Endpoints
 // ==========================================
-Route::apiResource('users', UserController::class);
 Route::apiResource('questions', QuestionController::class);
 Route::apiResource('courses', CourseController::class);
 Route::apiResource('course-outcomes', CourseOutcomeController::class);

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     /**
-     * Authenticate user credentials and issue Sanctum token.
+     * Authenticate user credentials, check active status, and issue Sanctum token with 8-hour expiration.
      */
     public function login(Request $request): JsonResponse
     {
@@ -29,13 +29,47 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $token = $user->createToken('cams-token')->plainTextToken;
+        // Access Authorization Status Guard
+        if (($user->status ?? 'Active') !== 'Active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access Revoked: Your account is marked as Inactive in User Management.'
+            ], 403);
+        }
+
+        // Issue token with explicit 8-hour expiration
+        $expiresAt = now()->addHours(8);
+        $token = $user->createToken('cams-token', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json([
             'success' => true,
             'message' => 'Login successful.',
             'token' => $token,
+            'expires_at' => $expiresAt->toISOString(),
             'user' => $this->formatUserPayload($user),
+        ]);
+    }
+
+    /**
+     * Refresh active session token for 8 additional hours.
+     */
+    public function refreshToken(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        $user->currentAccessToken()?->delete();
+
+        $expiresAt = now()->addHours(8);
+        $newToken = $user->createToken('cams-token', ['*'], $expiresAt)->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Session token refreshed successfully.',
+            'token' => $newToken,
+            'expires_at' => $expiresAt->toISOString()
         ]);
     }
 
@@ -58,14 +92,18 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'] ?? 'Cadet',
             'department' => $validated['department'] ?? 'ICT',
+            'status' => 'Active',
+            'password_changed_at' => now(),
         ]);
 
-        $token = $user->createToken('cams-token')->plainTextToken;
+        $expiresAt = now()->addHours(8);
+        $token = $user->createToken('cams-token', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json([
             'success' => true,
             'message' => 'Registration successful.',
             'token' => $token,
+            'expires_at' => $expiresAt->toISOString(),
             'user' => $this->formatUserPayload($user),
         ], 201);
     }
@@ -104,7 +142,8 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role ?? 'Cadet',
-            'department' => $user->department ?? 'General',
+            'department' => $user->department ?? 'ICT',
+            'status' => $user->status ?? 'Active',
         ];
     }
 }
