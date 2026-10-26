@@ -41,8 +41,7 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $actorRole = $this->getActorRole($request);
-        $manageableRoles = $this->getManageableRoles($actorRole);
+        $actorRole =$this->getActorRole($request);$manageableRoles = $this->getManageableRoles($actorRole);
 
         if (empty($manageableRoles)) {
             return response()->json([
@@ -51,16 +50,16 @@ class UserController extends Controller
             ], 403);
         }
 
-        $query = User::whereIn('role', $manageableRoles);
+        $query = User::whereIn('role',$manageableRoles);
 
-        if ($request->filled('role') && $request->role !== 'All') {
-            $query->where('role', $request->role);
+        if ($request->filled('role') &&$request->role !== 'All') {
+            $query->where('role',$request->role);
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search =$request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
+                $q->where('name', 'like', "\%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('department', 'like', "%{$search}%");
             });
@@ -68,16 +67,14 @@ class UserController extends Controller
 
         $query->orderBy('name');
 
-        if ($request->boolean('all', true)) {
-            $users = $query->get()->map(fn ($u) => $this->formatUserPayload($u));
+        if ($request->boolean('all', true)) {$users = $query->get()->map(fn ($u) => $this->formatUserPayload($u));
             return response()->json([
                 'success' => true,
                 'data' => $users
             ]);
         }
 
-        $perPage = (int) $request->input('per_page', 15);
-        $paginated = $query->paginate($perPage);
+        $perPage = (int) $request->input('per_page', 15);$paginated = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
@@ -96,14 +93,13 @@ class UserController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $actorRole = $this->getActorRole($request);
-        $manageableRoles = $this->getManageableRoles($actorRole);
+        $actorRole =$this->getActorRole($request);$manageableRoles = $this->getManageableRoles($actorRole);
 
         if (empty($manageableRoles)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
         }
 
-        $validated = $request->validate([
+        $validated =$request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => [
@@ -115,18 +111,15 @@ class UserController extends Controller
             'status' => 'nullable|string|in:Active,Inactive'
         ]);
 
-        $validated['name'] = trim($validated['name']);
-        $validated['email'] = strtolower(trim($validated['email']));
-        $validated['password'] = Hash::make($validated['password']);
-        $validated['password_changed_at'] = now();
-        $validated['department'] = $validated['department'] ?? 'ICT';
-        $validated['status'] = $validated['status'] ?? 'Active';
+        $validated['name'] = trim($validated['name']);$validated['email'] = strtolower(trim($validated['email']));$validated['password'] = Hash::make($validated['password']);$validated['password_changed_at'] = now();
+        $validated['department'] =$validated['department'] ?? 'ICT';
+        $validated['status'] =$validated['status'] ?? 'Active';
 
         $user = User::create($validated);
 
         return response()->json([
             'success' => true, 
-            'message' => 'User account created successfully.',
+            'message' => 'User account created successfully in database.',
             'data' => $this->formatUserPayload($user)
         ], 201);
     }
@@ -134,12 +127,13 @@ class UserController extends Controller
     /**
      * Display details for a specific user.
      */
-    public function show(Request $request, User $user): JsonResponse
+    public function show(Request $request,$id): JsonResponse
     {
-        $actorRole = $this->getActorRole($request);
-        $manageableRoles = $this->getManageableRoles($actorRole);
+        $user =$id instanceof User ? $id : User::findOrFail($id);
 
-        if (!in_array($user->role, $manageableRoles)) {
+        $actorRole =$this->getActorRole($request);$manageableRoles = $this->getManageableRoles($actorRole);
+
+        if (!in_array($user->role,$manageableRoles)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized to view this user.'], 403);
         }
 
@@ -150,18 +144,19 @@ class UserController extends Controller
     }
 
     /**
-     * Update specified user account details and password policy.
+     * Update specified user account details and password policy in MySQL.
      */
-    public function update(Request $request, User $user): JsonResponse
+    public function update(Request $request,$id): JsonResponse
     {
-        $actorRole = $this->getActorRole($request);
-        $manageableRoles = $this->getManageableRoles($actorRole);
+        $user =$id instanceof User ? $id : User::findOrFail($id);
 
-        if (!in_array($user->role, $manageableRoles)) {
+        $actorRole =$this->getActorRole($request);$manageableRoles = $this->getManageableRoles($actorRole);
+
+        if (!in_array($user->role,$manageableRoles)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized to edit this user.'], 403);
         }
 
-        $validated = $request->validate([
+        $validated =$request->validate([
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|email|max:255|unique:users,email,' . $user->id,
             'role' => 'nullable|string|in:' . implode(',', $manageableRoles),
@@ -180,9 +175,7 @@ class UserController extends Controller
             $validated['email'] = strtolower(trim($validated['email']));
         }
 
-        if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-            $validated['password_changed_at'] = now();
+        if (!empty($validated['password'])) {$validated['password'] = Hash::make($validated['password']);$validated['password_changed_at'] = now();
         } else {
             unset($validated['password']);
         }
@@ -191,24 +184,25 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true, 
-            'message' => 'User account updated successfully.',
+            'message' => 'User account updated successfully in MySQL.',
             'data' => $this->formatUserPayload($user)
         ]);
     }
 
     /**
-     * Remove the specified user account.
+     * Remove specified user account from database.
      */
-    public function destroy(Request $request, User $user): JsonResponse
+    public function destroy(Request $request,$id): JsonResponse
     {
-        $actorRole = $this->getActorRole($request);
-        $manageableRoles = $this->getManageableRoles($actorRole);
+        $user =$id instanceof User ? $id : User::findOrFail($id);
 
-        if (!in_array($user->role, $manageableRoles)) {
+        $actorRole =$this->getActorRole($request);$manageableRoles = $this->getManageableRoles($actorRole);
+
+        if (!in_array($user->role,$manageableRoles)) {
             return response()->json(['success' => false, 'message' => 'Unauthorized to delete this user.'], 403);
         }
 
-        if ($request->user() && $request->user()->id === $user->id) {
+        if ($request->user() && $request->user()->id ===$user->id) {
             return response()->json(['success' => false, 'message' => 'Cannot delete your own active account.'], 422);
         }
 
@@ -216,7 +210,7 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true, 
-            'message' => 'Account removed successfully.'
+            'message' => 'Account removed successfully from MySQL.'
         ]);
     }
 
@@ -230,8 +224,8 @@ class UserController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role ?? 'Admin',
-            'department' => !empty($user->department) ? $user->department : 'ICT',
-            'status' => !empty($user->status) ? $user->status : 'Active',
+            'department' => !empty($user->department) ?$user->department : 'ICT',
+            'status' => !empty($user->status) ?$user->status : 'Active',
         ];
     }
 }
