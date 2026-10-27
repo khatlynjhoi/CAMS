@@ -9,7 +9,6 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\CourseOutcomeController;
 use App\Http\Controllers\LearningOutcomeController;
 use App\Http\Controllers\ExamController;
-use App\Http\Controllers\ExamSubmissionController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\PilotSessionController;
 
@@ -27,7 +26,7 @@ Route::post('/register', [AuthController::class, 'register']);
 
 // Public Candidate Examination Endpoints
 Route::post('/student/verify-passcode', function (Request $request) {
-    $passcode =$request->input('access_code');
+    $passcode = $request->input('access_code');
     return response()->json([
         'success' => true,
         'message' => 'Passcode verified successfully.',
@@ -35,7 +34,7 @@ Route::post('/student/verify-passcode', function (Request $request) {
     ]);
 });
 
-Route::post('/student/submit-exam', [ExamSubmissionController::class, 'store']);
+Route::post('/student/submit-exam', [ExamController::class, 'submit']);
 
 // System Health Check Endpoint
 Route::get('/health', function () {
@@ -62,7 +61,6 @@ Route::middleware('auth:sanctum')->group(function () {
 // 3. Assessment Engine & Exam Generation
 // ==========================================
 Route::post('/exams/generate', [ExamController::class, 'generate']);
-Route::get('/saved-tests', [ExamController::class, 'getSavedTests']);
 
 // ==========================================
 // 4. Pilot Administration
@@ -81,7 +79,7 @@ if (class_exists(PilotSessionController::class)) {
             'success' => true,
             'message' => 'Pilot session created successfully.',
             'data' => array_merge(['id' => time(), 'status' => 'Active'], $request->all())
-        ], 210);
+        ], 201);
     });
 }
 
@@ -92,5 +90,5 @@ Route::apiResource('questions', QuestionController::class);
 Route::apiResource('courses', CourseController::class);
 Route::apiResource('course-outcomes', CourseOutcomeController::class);
 Route::apiResource('learning-outcomes', LearningOutcomeController::class);
-Route::apiResource('exam-submissions', ExamSubmissionController::class);
+Route::apiResource('exam-submissions', ExamController::class);
 Route::apiResource('audit-logs', AuditLogController::class);

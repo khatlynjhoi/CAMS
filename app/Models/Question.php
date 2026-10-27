@@ -49,6 +49,27 @@ class Question extends Model
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = ['normalized_correct_answer'];
+
+    /**
+     * Accessor to normalize correct_answer for client evaluation.
+     */
+    public function getNormalizedCorrectAnswerAttribute(): string
+    {
+        $val = trim((string) ($this->attributes['correct_answer'] ?? ''));
+
+        if (preg_match('/^[A-Da-d]$/', $val)) {
+            return strtoupper($val);
+        }
+
+        return $val;
+    }
+
+    /**
      * Automatically format question code on assignment.
      */
     public function setCodeAttribute(?string $value): void

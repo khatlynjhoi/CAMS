@@ -58,7 +58,7 @@ class ExamController extends Controller
             'totalItems' => 'nullable|integer|min:1|max:100'
         ]);
 
-        $limit = (int) ($validated['totalItems'] ?? 10);
+        $limit = (int) ($validated['totalItems'] ?? 50);
         $courseCode = trim($validated['courseId']);
 
         // Query questions matched by course relationship or course code pattern
@@ -84,18 +84,24 @@ class ExamController extends Controller
             $questions = $questions->concat($extraQuestions);
         }
 
-        // Map payload matching StudentExamView.vue specifications
-        $formattedExam = $questions->map(function ($q) {
+        // Map payload matching StudentExamView.vue specifications with sequential keys
+        $formattedExam = $questions->values()->map(function ($q, $idx) {
+            $options = is_array($q->options) ? $q->options : json_decode($q->options ?? '[]', true);
+            
             return [
-                'id' => $q->id,
-                'code' => $q->code ?? ('Q-' . $q->id),
+                'id' => $idx + 1, // Sequential sequence key (1 to 50)
+                'db_id' => $q->id,
+                'code' => $q->code ?? ('Q-' . ($idx + 1)),
                 'text' => $q->text,
                 'type' => $q->type ?? 'multiple_choice',
                 'image_url' => $q->image_url ?? null,
-                'options' => $q->options ?? [],
-                'correctAnswer' => $q->correct_answer ?? $q->correctAnswer ?? null,
+                'options' => $options ?? [],
+                'correctAnswer' => $q->normalized_correct_answer ?? $q->correct_answer,
+                'correct_answer' => $q->normalized_correct_answer ?? $q->correct_answer,
                 'bloomLevel' => $q->bloom_level ?? 'Understanding',
-                'stcwStandard' => $q->stcw_standard ?? 'Table A-II/1'
+                'stcwStandard' => $q->stcw_standard ?? 'Table A-II/1',
+                'co' => $q->course_outcome_id ?? 'CO1',
+                'lo' => $q->learning_outcome_id ?? 'LO1.1'
             ];
         });
 
