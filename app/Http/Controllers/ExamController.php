@@ -61,7 +61,6 @@ class ExamController extends Controller
         $limit = (int) ($validated['totalItems'] ?? 50);
         $courseCode = trim($validated['courseId']);
 
-        // Query questions matched by course relationship or course code pattern
         $questions = Question::where(function ($query) use ($courseCode) {
             $query->whereHas('course', function ($q) use ($courseCode) {
                 $q->where('code', $courseCode);
@@ -71,7 +70,6 @@ class ExamController extends Controller
         ->limit($limit)
         ->get();
 
-        // Fallback: If course-specific questions are fewer than requested, grab general items
         if ($questions->count() < $limit) {
             $remaining = $limit - $questions->count();
             $existingIds = $questions->pluck('id')->toArray();
@@ -84,12 +82,11 @@ class ExamController extends Controller
             $questions = $questions->concat($extraQuestions);
         }
 
-        // Map payload matching StudentExamView.vue specifications with sequential keys
         $formattedExam = $questions->values()->map(function ($q, $idx) {
             $options = is_array($q->options) ? $q->options : json_decode($q->options ?? '[]', true);
             
             return [
-                'id' => $idx + 1, // Sequential sequence key (1 to 50)
+                'id' => $idx + 1,
                 'db_id' => $q->id,
                 'code' => $q->code ?? ('Q-' . ($idx + 1)),
                 'text' => $q->text,
@@ -113,7 +110,7 @@ class ExamController extends Controller
     }
 
     /**
-     * Receives and persists cadet examination submissions for Stage 2 Institutional Reports.
+     * Receives and persists cadet examination submissions.
      */
     public function submit(Request $request): JsonResponse
     {
@@ -128,7 +125,6 @@ class ExamController extends Controller
             'submitted_at' => 'nullable|date'
         ]);
 
-        // Auto-assign authenticated user credentials if omitted
         $user = $request->user();
         $validated['cadet_id'] = $validated['cadet_id'] ?? ($user ? (string) $user->id : 'CADET-GUEST');
         $validated['cadet_name'] = $validated['cadet_name'] ?? ($user ? $user->name : 'Candidate Cadet');
